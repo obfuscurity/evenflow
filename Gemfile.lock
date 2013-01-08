@@ -1,0 +1,14 @@
+GEM
+  remote: http://rubygems.org/
+  specs:
+    em-resolv-replace (1.1.3)
+    em-sflow (1.0.1)
+      eventmachine (>= 0.12.10)
+    eventmachine (1.0.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  em-resolv-replace
+  em-sflow
