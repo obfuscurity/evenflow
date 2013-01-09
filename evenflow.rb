@@ -33,25 +33,25 @@ EM.run do
   collector = EventMachine::SFlow::Collector.new(:host => '0.0.0.0')
 
   wanted_metrics = {
-    'if_in_ucast_pkts' => true,
-    'if_in_mcast_pkts' => true,
-    'if_in_bcast_pkts' => true,
-    'if_in_discards' => true,
-    'if_in_errors' => true,
-    'if_in_octets' => true,
-    'if_in_unknown_protocols' => true,
-    'if_out_ucast_pkts' => true,
-    'if_out_mcast_pkts' => true,
-    'if_out_bcast_pkts' => true,
-    'if_out_discards' => true,
-    'if_out_errors' => true,
-    'if_out_octets' => true,
-    'if_index' => false,
-    'if_type' => false,
-    'if_direction' => false,
-    'if_admin_status' => false,
-    'if_oper_status' => false,
-    'if_promiscuous' => false,
+    :if_in_ucast_pkts => true,
+    :if_in_mcast_pkts => true,
+    :if_in_bcast_pkts => true,
+    :if_in_discards => true,
+    :if_in_errors => true,
+    :if_in_octets => true,
+    :if_in_unknown_protocols => true,
+    :if_out_ucast_pkts => true,
+    :if_out_mcast_pkts => true,
+    :if_out_bcast_pkts => true,
+    :if_out_discards => true,
+    :if_out_errors => true,
+    :if_out_octets => true,
+    :if_index => false,
+    :if_type => false,
+    :if_direction => false,
+    :if_admin_status => false,
+    :if_oper_status => false,
+    :if_promiscuous => false,
   }
 
   collector.on_sflow do |pkt|
@@ -62,12 +62,11 @@ EM.run do
         sample.records.each do |record|
           if record.is_a? EM::SFlow::GenericInterfaceCounters
             record.public_methods.each do |metric|
-              if wanted_metrics[metric.to_s]
-                carbon.puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{record.if_index}.#{metric.to_s} #{record.method(metric).call} #{Time.now.to_i}"
+              if wanted_metrics[metric]
+                carbon.puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{record.if_index}.#{metric} #{record.method(metric).call} #{Time.now.to_i}"
+                puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{record.if_index}.#{metric} #{record.method(metric).call} #{Time.now.to_i}" if ENV['VERBOSE'].to_i.eql?(1)
               end
             end
-          else
-            #puts "NOT HANDLING: #{record.class}"
           end
         end
       end
