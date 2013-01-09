@@ -3,10 +3,6 @@ require 'em-sflow'
 require 'socket'
 require 'uri'
 
-# sflow -> carbon (or statsd) bridge
-# discard raw packet header samples (for now, eventually store in nosql)
-# discard ethernet interface (error) counter samples
-# ignore sample if admin.status == 0
 
 EM.run do
 
