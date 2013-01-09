@@ -6,6 +6,8 @@ Currently only _Generic Interface Counters_ are supported. All other message typ
 
 ## Usage
 
+Starting up evenflow is very straightforward. It recognizes a few ENV options such as `CARBON_PREFIX`, `CARBON_URL` and `VERBOSE`. When `VERBOSE=1` it will print out each line to stderr that it also sends to the Carbon socket.
+
 ```
 $ CARBON_PREFIX=network CARBON_URL=carbon://localhost:2003 ruby evenflow.rb
 ```
