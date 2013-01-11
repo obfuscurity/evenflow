@@ -28,6 +28,13 @@ EM.run do
   # listen for sflow datagrams
   collector = EventMachine::SFlow::Collector.new(:host => '0.0.0.0')
 
+  # start our internal metrics timer
+  total_metrics = 0
+  EM::add_periodic_timer 5.0 do
+    puts "number of metrics: #{total_metrics}"
+    total_metrics = 0
+  end
+
   wanted_metrics = {
     :if_in_ucast_pkts => true,
     :if_in_mcast_pkts => true,
@@ -59,6 +66,7 @@ EM.run do
           if record.is_a? EM::SFlow::GenericInterfaceCounters
             record.public_methods.each do |metric|
               if wanted_metrics[metric]
+                total_metrics++
                 carbon.puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{record.if_index}.#{metric} #{record.method(metric).call} #{Time.now.to_i}"
                 puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{record.if_index}.#{metric} #{record.method(metric).call} #{Time.now.to_i}" if ENV['VERBOSE'].to_i.eql?(1)
               end
