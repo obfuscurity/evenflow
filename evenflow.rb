@@ -66,7 +66,7 @@ EM.run do
           if record.is_a? EM::SFlow::GenericInterfaceCounters
             record.public_methods.each do |metric|
               if wanted_metrics[metric]
-                total_metrics++
+                total_metrics += 1
                 carbon.puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{record.if_index}.#{metric} #{record.method(metric).call} #{Time.now.to_i}"
                 puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{record.if_index}.#{metric} #{record.method(metric).call} #{Time.now.to_i}" if ENV['VERBOSE'].to_i.eql?(1)
               end
