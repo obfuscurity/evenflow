@@ -30,8 +30,8 @@ EM.run do
 
   # start our internal metrics timer
   total_metrics = 0
-  EM::add_periodic_timer 5.0 do
-    puts "number of metrics: #{total_metrics}"
+  EM::add_periodic_timer 10.0 do
+    carbon.puts "evenflow.metrics #{total_metrics} #{Time.now.to_i"
     total_metrics = 0
   end
 
