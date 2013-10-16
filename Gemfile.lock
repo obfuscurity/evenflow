@@ -9,4 +9,5 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  bundler
   em-sflow
