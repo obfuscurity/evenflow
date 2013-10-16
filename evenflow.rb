@@ -1,5 +1,7 @@
+require 'rubygems'
 require 'bundler'
 require 'bundler/setup'
+
 require 'em-sflow'
 require 'socket'
 require 'uri'
