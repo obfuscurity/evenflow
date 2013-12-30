@@ -23,6 +23,7 @@ EM.run do
 
   # see if we have a custom metrics prefix
   carbon_prefix = ENV['CARBON_PREFIX'] || nil
+  evenflow_prefix = ENV['EVENFLOW_PREFIX'] || 'evenflow'
 
   # prep our DNS in-memory cache and resolver
   dns_cache = {}
@@ -35,7 +36,7 @@ EM.run do
   total_metrics = 0
   stats_interval = ENV['STATS_INTERVAL'] || 60
   EM::add_periodic_timer stats_interval do
-    carbon.puts "evenflow.metrics #{total_metrics} #{Time.now.to_i}"
+    carbon.puts "#{evenflow_prefix}.metrics #{total_metrics} #{Time.now.to_i}"
     total_metrics = 0
   end
 
