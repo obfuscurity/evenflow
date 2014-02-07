@@ -90,8 +90,9 @@ EM.run do
             begin
               mgr.walk(IF_MIB_IFDESCR) do |row|
                 row.each do |record|
-                  name = record.name.last.to_s.gsub('/', '_')
-                  interfaces[pkt.agent.to_s][name] = record.value.to_s
+                  port = record.name.last.to_s
+                  name = record.value.to_s.downcase.gsub('/', '_')
+                  interfaces[pkt.agent.to_s][port] = name
                 end
               end
             rescue
