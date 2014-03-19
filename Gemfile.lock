@@ -4,6 +4,7 @@ GEM
     em-sflow (1.0.1)
       eventmachine (>= 0.12.10)
     eventmachine (1.0.0)
+    snmp (1.1.1)
 
 PLATFORMS
   ruby
@@ -11,3 +12,4 @@ PLATFORMS
 DEPENDENCIES
   bundler
   em-sflow
+  snmp

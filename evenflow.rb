@@ -3,7 +3,9 @@ require 'bundler'
 require 'bundler/setup'
 
 require 'em-sflow'
+require 'snmp'
 require 'socket'
+require 'thread'
 require 'uri'
 
 
@@ -24,10 +26,18 @@ EM.run do
   # see if we have a custom metrics prefix
   carbon_prefix = ENV['CARBON_PREFIX'] || nil
   evenflow_prefix = ENV['EVENFLOW_PREFIX'] || 'evenflow'
+  force_domain = ENV['FORCE_DOMAIN'] || nil
+
+  # SNMP community for looking up ifDescr values
+  snmp_community = ENV['SNMP_COMMUNITY'] || false
+  IF_MIB_IFDESCR = '1.3.6.1.2.1.2.2.1.2.'
 
   # prep our DNS in-memory cache and resolver
   dns_cache = {}
   resolver = Resolv::DNS.new
+
+  # prep our interface description cache
+  interfaces = {}
 
   # listen for sflow datagrams
   collector = EventMachine::SFlow::Collector.new(:host => '0.0.0.0')
@@ -63,17 +73,56 @@ EM.run do
   }
 
   collector.on_sflow do |pkt|
-    op = proc { resolver.getname(pkt.agent.to_s) unless dns_cache[pkt.agent.to_s] }
+    op = proc do 
+      unless dns_cache[pkt.agent.to_s]
+        hostname = resolver.getname(pkt.agent.to_s).to_s
+        hostname.gsub!(/([^.]*)\..*/, "\\1.#{force_domain}") if force_domain
+        dns_cache[pkt.agent.to_s] = hostname
+      end
+
+      if snmp_community && !interfaces[pkt.agent.to_s]
+        mutex = Mutex.new
+        mutex.synchronize do 
+          interfaces[pkt.agent.to_s] = {}
+          snmp_hostname = dns_cache[pkt.agent.to_s]
+
+          SNMP::Manager.open(:host => snmp_hostname, :community => snmp_community) do |mgr|
+            begin
+              mgr.walk(IF_MIB_IFDESCR) do |row|
+                row.each do |record|
+                  port = record.name.last.to_s
+                  name = record.value.to_s.downcase.gsub('/', '_')
+                  interfaces[pkt.agent.to_s][port] = name
+                end
+              end
+            rescue
+              # nil out interfaces[pkt.agent.to_s] so we try again
+              interfaces[pkt.agent.to_s] = nil
+            end
+          end
+        end
+      end
+
+      dns_cache[pkt.agent.to_s]
+    end
     cb = proc do |agent|
-      dns_cache[pkt.agent.to_s] ||= agent.to_s.gsub('.', '_')
+      hostname = agent.to_s.gsub!('.', '_')
+
       pkt.samples.each do |sample|
         sample.records.each do |record|
           if record.is_a? EM::SFlow::GenericInterfaceCounters
             record.public_methods.each do |metric|
               if wanted_metrics[metric.to_sym]
                 total_metrics += 1
-                carbon.puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{record.if_index}.#{metric} #{record.method(metric).call} #{Time.now.to_i}"
-                puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{record.if_index}.#{metric} #{record.method(metric).call} #{Time.now.to_i}" if ENV['VERBOSE'].to_i.eql?(1)
+                interface_name = interfaces[pkt.agent.to_s][record.if_index.to_s] || record.if_index.to_s
+
+                if snmp_community && !interfaces[pkt.agent.to_s][record.if_index.to_s]
+                  puts "unable to find interface name for #{pkt.agent.to_s} / #{record.if_index.to_s}"
+                  next
+                end
+
+                carbon.puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{interface_name}.#{metric} #{record.method(metric).call} #{Time.now.to_i}"
+                puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{interface_name}.#{metric} #{record.method(metric).call} #{Time.now.to_i}" if ENV['VERBOSE'].to_i.eql?(1)
               end
             end
           end
