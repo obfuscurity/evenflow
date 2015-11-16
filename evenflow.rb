@@ -73,16 +73,20 @@ EM.run do
   }
 
   collector.on_sflow do |pkt|
-    op = proc do 
+    op = proc do
       unless dns_cache[pkt.agent.to_s]
-        hostname = resolver.getname(pkt.agent.to_s).to_s
+        begin
+          hostname = resolver.getname(pkt.agent.to_s).to_s
+        rescue Resolv::ResolvError
+          next
+        end
         hostname.gsub!(/([^.]*)\..*/, "\\1.#{force_domain}") if force_domain
         dns_cache[pkt.agent.to_s] = hostname
       end
 
       if snmp_community && !interfaces[pkt.agent.to_s]
         mutex = Mutex.new
-        mutex.synchronize do 
+        mutex.synchronize do
           interfaces[pkt.agent.to_s] = {}
           snmp_hostname = dns_cache[pkt.agent.to_s]
 
@@ -114,15 +118,17 @@ EM.run do
             record.public_methods.each do |metric|
               if wanted_metrics[metric.to_sym]
                 total_metrics += 1
-                interface_name = interfaces[pkt.agent.to_s][record.if_index.to_s] || record.if_index.to_s
+                if dns_cache.include? pkt.agent.to_s
+                  interface_name = interfaces[pkt.agent.to_s][record.if_index.to_s] || record.if_index.to_s
 
-                if snmp_community && !interfaces[pkt.agent.to_s][record.if_index.to_s]
-                  puts "unable to find interface name for #{pkt.agent.to_s} / #{record.if_index.to_s}"
-                  next
+                  if snmp_community && !interfaces[pkt.agent.to_s][record.if_index.to_s]
+                    puts "unable to find interface name for #{pkt.agent.to_s} / #{record.if_index.to_s}"
+                    next
+                  end
+
+                  carbon.puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{interface_name}.#{metric} #{record.method(metric).call} #{Time.now.to_i}"
+                  puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{interface_name}.#{metric} #{record.method(metric).call} #{Time.now.to_i}" if ENV['VERBOSE'].to_i.eql?(1)
                 end
-
-                carbon.puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{interface_name}.#{metric} #{record.method(metric).call} #{Time.now.to_i}"
-                puts "#{carbon_prefix}.#{dns_cache[pkt.agent.to_s]}.interfaces.#{interface_name}.#{metric} #{record.method(metric).call} #{Time.now.to_i}" if ENV['VERBOSE'].to_i.eql?(1)
               end
             end
           end
